@@ -1,24 +1,80 @@
--- TABLE
-CREATE TABLE demo (ID integer primary key, Name varchar(20), Hint text );
-CREATE TABLE fornecedores (
-	frn_id int auto_increment primary key,
-    frn_nome varchar(50) not null,
-    frn_email varchar(50)
-);
-CREATE TABLE marcas (
+create database empresa;
+use empresa;
+
+create table marcas (
 	mrc_id int auto_increment primary key,
     mrc_nome varchar(50) not null,
     mrc_nacionalidade varchar(50)
 );
-CREATE TABLE produto_fornecedor (
+
+create table produtos (
+	prd_id int auto_increment primary key,
+    prd_nome varchar(50) not null,
+    prd_qtd_estoque int not null default 0,
+    prd_estoque_min int not null default 0,
+    prd_data_fabricacao timestamp default now(),
+    prd_perecivel boolean,
+    prd_valor decimal(10,2),
+    prd_marca_id int,
+    constraint fk_marcas foreign key(prd_marca_id) references marcas(mrc_id)
+);
+
+create table fornecedores (
+	frn_id int auto_increment primary key,
+    frn_nome varchar(50) not null,
+    frn_email varchar(50)
+);
+
+create table produto_fornecedor (
 	pf_prod_id int references produtos(prd_id),
     pf_forn_id int references fornecedores(frn_id),
     primary key (pf_prod_id, pf_forn_id)
 );
- 
--- INDEX
- 
--- TRIGGER
- 
--- VIEW
- 
+
+insert into marcas (mrc_nome, mrc_nacionalidade)
+values ('Renata', 'Brasileira'), ('Tio João', 'Brasileira'), ('Barilla', 'Italiana'), ('Kicaldo', 'Brasileira'),
+('Pomarola', 'Brasileira'), ('Heinz', 'Norte-americana'), ('Bauducco', 'Italiana');
+
+insert into produtos (prd_nome, prd_qtd_estoque, prd_estoque_min, prd_perecivel, prd_valor, prd_marca_id)
+values ('Arroz branco', 542, 100, false, 23.90, 2), ('Feijão preto', 744, 80, false, 7.80, 4),
+('Macarrão', 416, 50, false, 14.00, 3), ('Farinha de trigo', 289, 50, false, 4.10, 1),
+('Bolacha recheada', 881, 250, true, 2.50, 7), ('Molho de tomate', 240, 50, true, 1.80, 5);
+
+insert into fornecedores (frn_nome, frn_email)
+values ('Tonhão', 'tonho_123@gmail.com'), ('SSEP', 'ssep@comercio.com.br'), ('Ferreira & Silva', 'contato@ferreirasilva.com.br');
+
+insert into produto_fornecedor (pf_prod_id, pf_forn_id)
+values (1, 2), (2, 2), (3, 3), (4, 3), (5, 1), (6, 1);
+
+/* Crie uma view que mostra todos os produtos e suas respectivas marcas */
+create view produtos_marcas as
+select produtos.*, marcas.mrc_nome from produtos
+inner join marcas on produtos.prd_marca_id = marcas.mrc_id;
+
+/* Crie uma view que mostra todos os produtos e seus respectivos fornecedores */
+create view produtos_fornecedores as
+select produtos.*, fornecedores.frn_nome from produtos
+inner join produto_fornecedor on produtos.prd_id = produto_fornecedor.pf_prod_id
+inner join fornecedores on produto_fornecedor.pf_forn_id = fornecedores.frn_id;
+
+/* Crie uma view que mostra todos os produtos e seus respectivos fornecedores e marcas */
+create view produtos_forn_marcas as
+select produtos_fornecedores.*, marcas.mrc_nome from produtos_fornecedores
+right join marcas on marcas.mrc_id = produtos_fornecedores.prd_marca_id;
+
+/* Crie uma view que mostra todos os produtos com estoque abaixo do mínimo */
+create view produtos_baixo_estoque as
+select prd_id, prd_nome from produtos where prd_qtd_estoque < prd_estoque_min;
+
+/* Adicione o campo data de validade. Insira novos produtos com essa informação */
+alter table produtos add prd_validade date;
+
+insert into produtos (prd_nome, prd_qtd_estoque, prd_estoque_min, prd_perecivel, prd_valor, prd_marca_id, prd_validade)
+values ('Ketchup', 14, 50, true, 12.80, 6, '2024-08-10'), ('Mostarda', 88, 50, true, 9.70, 6, '2024-11-24');
+
+/* Crie uma view que mostra todos os produtos e suas respectivas marcas com validade vencida */
+create view produtos_fora_validade as
+select * from produtos where prd_validade < now();
+
+/* Selecionar os produtos com preço acima da média */
+select * from produtos where prd_valor > (select avg(prd_valor) from produtos);
